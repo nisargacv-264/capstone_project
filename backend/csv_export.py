@@ -8,27 +8,57 @@ EXPORT_PATH = Path(__file__).resolve().parent.parent / "logs" / "telemetry_expor
 def export_telemetry_to_csv():
     EXPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    columns = [
+        "id",
+        "timestamp",
+        "temperature",
+        "pressure",
+        "altitude",
+        "accel_x",
+        "accel_y",
+        "accel_z",
+        "gyro_x",
+        "gyro_y",
+        "gyro_z",
+        "temperature_status",
+        "pressure_status",
+        "imu_status",
+    ]
+    export_path = EXPORT_PATH
+
+    if export_path.exists():
+        with open(export_path, newline="") as csv_file:
+            existing_columns = next(csv.reader(csv_file), None)
+
+        if existing_columns != columns:
+            export_path = EXPORT_PATH.with_name("telemetry_export_v2.csv")
+
+    last_exported_id = 0
+    if export_path.exists():
+        with open(export_path, newline="") as csv_file:
+            reader = csv.reader(csv_file)
+            next(reader, None)
+            last_row = None
+            for last_row in reader:
+                pass
+            if last_row:
+                last_exported_id = int(last_row[0])
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute("""
-        SELECT *
-        FROM telemetry
-        ORDER BY id DESC
-    """).fetchall()
+    rows = conn.execute(
+        "SELECT * FROM telemetry WHERE id > ? ORDER BY id ASC",
+        (last_exported_id,),
+    ).fetchall()
     conn.close()
 
-    with open(EXPORT_PATH, "w", newline="") as csv_file:
+    file_exists = export_path.exists()
+    with open(export_path, "a", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["id", "timestamp", "temperature", "pressure", "imu", "status"])
+        if not file_exists:
+            writer.writerow(columns)
 
         for row in rows:
-            writer.writerow([
-                row["id"],
-                row["timestamp"],
-                row["temperature"],
-                row["pressure"],
-                row["imu"],
-                row["status"]
-            ])
+            writer.writerow([row[column] for column in columns])
 
-    return str(EXPORT_PATH)
+    return str(export_path)

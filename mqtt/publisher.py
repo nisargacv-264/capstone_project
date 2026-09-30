@@ -32,9 +32,16 @@
 #     time.sleep(2)
 
 import json
+import json
+import os
+import sys
 import time
 
 import paho.mqtt.client as mqtt
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from simulator.simulator import generate_data
 
